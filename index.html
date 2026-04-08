@@ -209,7 +209,10 @@ function renderPreview(){
       d.innerHTML=`
       <label style="display:flex;gap:8px;align-items:center">
         <input type="checkbox" class="skipBox" ${p.skip?'checked':''}>
-        <b>${p.name}</b>
+        ${p.skip 
+  ? `<b>${p.oldName}</b>` 
+  : `<span style="text-decoration:line-through;color:#ef4444;opacity:.7"</span>
+     <br><b>${p.name}</b>`
       </label>
       <small>${p.fd}</small>
       ` +
@@ -254,6 +257,7 @@ preview.onclick=async()=>{
   placemarks(doc).forEach(pm=>{
     const im = imgs(pm)
     const c = coord(pm)
+    const oldNameNode = [...pm.children].find(x=>x.localName==='name')
 
     previewData.push({
       pm,
@@ -263,6 +267,7 @@ preview.onclick=async()=>{
       im,
       skip:false,
       name:''
+      oldName: oldNameNode ? oldNameNode.textContent : '(no name)'
     })
 
     if(c){
