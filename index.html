@@ -44,6 +44,7 @@ button{border:none;border-radius:12px;padding:10px 16px;cursor:pointer}
 .thumbRow img{width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
 .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .toggle{cursor:pointer;font-size:14px}
+.oldName{color:#ef4444;text-decoration:line-through;opacity:.7}
 </style>
 </head>
 
@@ -103,7 +104,6 @@ button{border:none;border-radius:12px;padding:10px 16px;cursor:pointer}
 
 <div id="map"></div>
 <div id="previewBox" class="preview"></div>
-
 </div>
 </div>
 
@@ -163,17 +163,14 @@ async function loadFile(f){
 
   if(f.name.endsWith('.kmz')){
     zipRef=await JSZip.loadAsync(await f.arrayBuffer())
-
     for(const p in zipRef.files){
       if(/\.(jpg|png|jpeg)$/i.test(p)){
         kmzImages[p]=URL.createObjectURL(await zipRef.file(p).async('blob'))
       }
     }
-
     kmlPath=Object.keys(zipRef.files).find(p=>p.endsWith('.kml'))
     return await zipRef.file(kmlPath).async('text')
   }
-
   return await f.text()
 }
 
@@ -184,8 +181,7 @@ function generateNames(){
 
   previewData.forEach(p=>{
     if(p.skip){
-      const old = [...p.pm.children].find(x=>x.localName==='name')
-      p.name = old ? old.textContent : '(no name)'
+      p.name = p.oldName
       return
     }
 
@@ -210,9 +206,9 @@ function renderPreview(){
       <label style="display:flex;gap:8px;align-items:center">
         <input type="checkbox" class="skipBox" ${p.skip?'checked':''}>
         ${p.skip 
-  ? `<b>${p.oldName}</b>` 
-  : `<span style="text-decoration:line-through;color:#ef4444;opacity:.7"</span>
-     <br><b>${p.name}</b>`
+          ? `<b>${p.oldName}</b>`
+          : `<span class="oldName">${p.oldName}</span><br><b>${p.name}</b>`
+        }
       </label>
       <small>${p.fd}</small>
       ` +
@@ -257,7 +253,7 @@ preview.onclick=async()=>{
   placemarks(doc).forEach(pm=>{
     const im = imgs(pm)
     const c = coord(pm)
-    const oldNameNode = [...pm.children].find(x=>x.localName==='name')
+    const oldNode = [...pm.children].find(x=>x.localName==='name')
 
     previewData.push({
       pm,
@@ -266,8 +262,8 @@ preview.onclick=async()=>{
       lon:c?.lon,
       im,
       skip:false,
-      name:''
-      oldName: oldNameNode ? oldNameNode.textContent : '(no name)'
+      name:'',
+      oldName: oldNode ? oldNode.textContent : '(no name)'
     })
 
     if(c){
