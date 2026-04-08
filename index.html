@@ -10,10 +10,40 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
-body{margin:0;font-family:sans-serif;background:#f1f5f9}
-.container{max-width:1000px;margin:auto;padding:20px}
-.card{background:white;padding:20px;border-radius:12px}
-.previewItem{border:1px solid #ddd;margin-bottom:10px;padding:10px;border-radius:10px}
+:root{
+  --bg:#f1f5f9;--card:#fff;--primary:#0ea5a4;--secondary:#64748b;
+  --danger:#dc2626;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;
+}
+body.dark{
+  --bg:#020617;--card:#020617;--primary:#22d3ee;--secondary:#475569;
+  --danger:#f87171;--border:#1e293b;--text:#e5e7eb;--muted:#94a3b8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:system-ui;color:var(--text)}
+.container{max-width:1200px;margin:auto;padding:24px}
+.card{background:var(--card);border-radius:16px;padding:24px}
+h1{margin:0;font-size:22px}
+.subtitle{color:var(--muted);margin:6px 0 20px;font-size:14px}
+.section{border:1px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.sectionHeader{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;cursor:pointer}
+.sectionBody{padding:16px;display:none}
+.section.open .sectionBody{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text)}
+label.inline{display:flex;align-items:center;gap:8px;font-size:14px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+button{border:none;border-radius:12px;padding:10px 16px;cursor:pointer}
+.primary{background:var(--primary);color:white}
+.secondary{background:var(--secondary);color:white}
+#map{height:340px;border-radius:14px;margin-top:16px}
+.preview{margin-top:16px;display:grid;gap:12px}
+.previewItem{border:1px solid var(--border);border-radius:14px;padding:14px}
+.badge{background:var(--primary);color:white;padding:2px 8px;border-radius:999px;font-size:12px}
+.warn{background:rgba(220,38,38,.15);color:var(--danger);padding:2px 8px;border-radius:999px;font-size:12px}
+.thumbRow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.thumbRow img{width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.toggle{cursor:pointer;font-size:14px}
 </style>
 </head>
 
@@ -21,136 +51,264 @@ body{margin:0;font-family:sans-serif;background:#f1f5f9}
 <div class="container">
 <div class="card">
 
-<h2>KML / KMZ Renamer</h2>
+<div class="topbar">
+  <div>
+    <h1>🗺️ KML / KMZ Renamer By Wahid</h1>
+    <div class="subtitle">Preview foto, cek titik, rename aman.</div>
+  </div>
+  <div class="toggle" id="darkToggle">🌙 Dark</div>
+</div>
 
-<input id="fileinput" type="file" accept=".kml,.kmz"><br><br>
+<div class="section open">
+  <div class="sectionHeader"><span>📁 File</span><span>▾</span></div>
+  <div class="sectionBody">
+    <input id="fileinput" type="file" accept=".kml,.kmz">
+  </div>
+</div>
 
-<input id="prefix" placeholder="Prefix" value="PL-">
-<input id="startnum" value="01">
-<select id="padding">
-  <option value="0">No pad</option>
-  <option value="2">2</option>
-  <option value="3" selected>3</option>
-</select>
+<div class="section open">
+  <div class="sectionHeader"><span>✏️ Rename</span><span>▾</span></div>
+  <div class="sectionBody">
+    <div class="grid">
+      <input id="prefix" placeholder="Prefix">
+      <input id="suffix" placeholder="Suffix">
+      <input id="startnum" value="01">
+    </div>
+  </div>
+</div>
 
-<br><br>
+<div class="section">
+  <div class="sectionHeader"><span>⚙️ Opsi</span><span>▾</span></div>
+  <div class="sectionBody">
+    <div class="grid">
+      <label class="inline">
+        <input type="checkbox" id="onlyPhoto">
+        Hanya tampil yang ada foto
+      </label>
 
-<button id="toggleAll">Uncheck All</button>
-<button id="preview">Preview</button>
-<button id="rename">Download</button>
+      <label class="inline">
+        <input type="checkbox" id="markNoPhoto">
+        Tandai nama jika tidak ada foto
+      </label>
 
-<div id="previewBox"></div>
+      <input id="noPhotoText" placeholder="Teks penanda" value="NoFoto">
+    </div>
+  </div>
+</div>
+
+<div class="actions">
+  <button id="preview" class="primary">👁️ Preview</button>
+  <button id="rename" class="secondary">💾 Rename & Download</button>
+</div>
+
+<div id="map"></div>
+<div id="previewBox" class="preview"></div>
 
 </div>
 </div>
 
 <script>
-let previewData=[]
-let selectedMap=new Map()
-let allChecked=true
-let zipRef,kmlPath,origFile
+document.querySelectorAll('.sectionHeader').forEach(h=>{
+  h.onclick=()=>h.parentElement.classList.toggle('open')
+})
 
-function pad(n,w){return w?String(n).padStart(w,'0'):n}
+darkToggle.onclick=()=>{
+  document.body.classList.toggle('dark')
+  darkToggle.textContent=document.body.classList.contains('dark')?'☀️ Light':'🌙 Dark'
+}
+
+let map,mapLayer,previewData=[],zipRef,kmlPath,origFile,kmzImages={}
+
+function initMap(){
+  if(map) return
+  map=L.map('map').setView([0,0],2)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map)
+  mapLayer=L.layerGroup().addTo(map)
+}
+
+function parseKML(t){return new DOMParser().parseFromString(t,'application/xml')}
+function placemarks(d){return [...d.getElementsByTagNameNS('*','Placemark')]}
+
+function coord(pm){
+  const c=pm.getElementsByTagNameNS('*','coordinates')[0]
+  if(!c) return null
+  const [lon,lat]=c.textContent.trim().split(',')
+  return {lat:+lat,lon:+lon}
+}
+
+function folder(pm){
+  let p=pm.parentElement
+  while(p){
+    if(p.localName==='Folder'){
+      const n=p.getElementsByTagNameNS('*','name')[0]
+      return n?n.textContent:'Tanpa Folder'
+    }
+    p=p.parentElement
+  }
+  return 'Tanpa Folder'
+}
+
+function imgs(pm){
+  const d=pm.getElementsByTagNameNS('*','description')[0]
+  if(!d) return []
+  let html=''
+  d.childNodes.forEach(n=>{if(n.nodeType===3||n.nodeType===4)html+=n.nodeValue})
+  const div=document.createElement('div')
+  div.innerHTML=html
+  return [...div.querySelectorAll('img')].map(i=>kmzImages[i.getAttribute('src')]||i.src)
+}
 
 async function loadFile(f){
-  origFile=f
+  origFile=f; kmzImages={}; zipRef=null; kmlPath=null
+
   if(f.name.endsWith('.kmz')){
     zipRef=await JSZip.loadAsync(await f.arrayBuffer())
+
+    for(const p in zipRef.files){
+      if(/\.(jpg|png|jpeg)$/i.test(p)){
+        kmzImages[p]=URL.createObjectURL(await zipRef.file(p).async('blob'))
+      }
+    }
+
     kmlPath=Object.keys(zipRef.files).find(p=>p.endsWith('.kml'))
     return await zipRef.file(kmlPath).async('text')
   }
+
   return await f.text()
+}
+
+function generateNames(){
+  const base = parseInt(startnum.value,10)
+  const width = startnum.value.length
+  let counter = base
+
+  previewData.forEach(p=>{
+    if(p.skip){
+      const old = [...p.pm.children].find(x=>x.localName==='name')
+      p.name = old ? old.textContent : '(no name)'
+      return
+    }
+
+    p.name = prefix.value + String(counter++).padStart(width,'0') + suffix.value
+
+    if(markNoPhoto.checked && p.im.length===0){
+      p.name += '_' + (noPhotoText.value || 'NoFoto')
+    }
+  })
+}
+
+function renderPreview(){
+  previewBox.innerHTML=''
+
+  previewData
+    .filter(p=>!onlyPhoto.checked || p.im.length)
+    .forEach(p=>{
+      const d=document.createElement('div')
+      d.className='previewItem'
+
+      d.innerHTML=`
+      <label style="display:flex;gap:8px;align-items:center">
+        <input type="checkbox" class="skipBox" ${p.skip?'checked':''}>
+        <b>${p.name}</b>
+      </label>
+      <small>${p.fd}</small>
+      ` +
+      (p.im.length
+        ? `<span class="badge">${p.im.length} foto</span>`
+        : `<span class="warn">tanpa foto</span>`)
+
+      const r=document.createElement('div')
+      r.className='thumbRow'
+
+      p.im.forEach(s=>{
+        const i=document.createElement('img')
+        i.src=s
+        r.appendChild(i)
+      })
+
+      d.appendChild(r)
+
+      const cb = d.querySelector('.skipBox')
+      cb.onchange = () => {
+        p.skip = cb.checked
+        generateNames()
+        renderPreview()
+      }
+
+      previewBox.appendChild(d)
+    })
 }
 
 preview.onclick=async()=>{
   const f=fileinput.files[0]
-  if(!f) return alert("pilih file")
+  if(!f) return alert('pilih file')
 
-  const xml=new DOMParser().parseFromString(await loadFile(f),'text/xml')
-  const placemarks=xml.getElementsByTagName("Placemark")
+  initMap()
+  mapLayer.clearLayers()
 
+  const doc=parseKML(await loadFile(f))
   previewData=[]
-  selectedMap=new Map()
-  allChecked=true
-  toggleAll.textContent="Uncheck All"
 
-  let num=parseInt(startnum.value)
+  const bounds=[]
 
-  previewBox.innerHTML=""
+  placemarks(doc).forEach(pm=>{
+    const im = imgs(pm)
+    const c = coord(pm)
 
-  for(let i=0;i<placemarks.length;i++){
-    const pm=placemarks[i]
-    const oldName=pm.getElementsByTagName("name")[0]?.textContent||""
+    previewData.push({
+      pm,
+      fd:folder(pm),
+      lat:c?.lat,
+      lon:c?.lon,
+      im,
+      skip:false,
+      name:''
+    })
 
-    selectedMap.set(i,true)
-
-    const newName=prefix.value+pad(num,padding.value)
-    num++
-
-    previewData.push({pm,newName})
-
-    const div=document.createElement("div")
-    div.className="previewItem"
-    div.innerHTML=`
-      <input type="checkbox" data-i="${i}" checked>
-      <b>${oldName}</b> → ${newName}
-    `
-    previewBox.appendChild(div)
-  }
-}
-
-previewBox.addEventListener("change",e=>{
-  if(e.target.type==="checkbox"){
-    selectedMap.set(+e.target.dataset.i,e.target.checked)
-  }
-})
-
-toggleAll.onclick=()=>{
-  allChecked=!allChecked
-  document.querySelectorAll("#previewBox input").forEach((c,i)=>{
-    c.checked=allChecked
-    selectedMap.set(i,allChecked)
+    if(c){
+      bounds.push([c.lat,c.lon])
+      L.marker([c.lat,c.lon]).addTo(mapLayer)
+    }
   })
-  toggleAll.textContent=allChecked?"Uncheck All":"Check All"
+
+  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]})
+
+  generateNames()
+  renderPreview()
 }
 
 rename.onclick=async()=>{
-  if(!previewData.length) return alert("preview dulu")
+  if(!previewData.length) return alert('preview dulu')
 
-  let n=parseInt(startnum.value)
+  previewData.forEach(p=>{
+    if(p.skip) return
 
-  previewData.forEach((p,i)=>{
-    if(!selectedMap.get(i)) return
-
-    const newName=prefix.value+pad(n,padding.value)
-    n++
-
-    let nameNode=p.pm.getElementsByTagName("name")[0]
-    if(!nameNode){
-      nameNode=p.pm.ownerDocument.createElement("name")
-      p.pm.prepend(nameNode)
+    let n=[...p.pm.children].find(x=>x.localName==='name')
+    if(!n){
+      n=p.pm.ownerDocument.createElement('name')
+      p.pm.prepend(n)
     }
-    nameNode.textContent=newName
+    n.textContent=p.name
   })
 
   const xml=new XMLSerializer().serializeToString(previewData[0].pm.ownerDocument)
+  const base=origFile.name.replace(/\.(kml|kmz)$/i,'')
 
   if(origFile.name.endsWith('.kmz')){
     zipRef.file(kmlPath,xml)
-    const blob=await zipRef.generateAsync({type:"blob"})
-    download(blob,"result.kmz")
+    const b=await zipRef.generateAsync({type:'blob'})
+    dl(b,base+'_renamed.kmz')
   }else{
-    download(new Blob([xml]),"result.kml")
+    dl(new Blob([xml],{type:'application/vnd.google-earth.kml+xml'}),base+'_renamed.kml')
   }
 }
 
-function download(blob,name){
-  const a=document.createElement("a")
-  a.href=URL.createObjectURL(blob)
-  a.download=name
+function dl(b,n){
+  const a=document.createElement('a')
+  a.href=URL.createObjectURL(b)
+  a.download=n
   a.click()
 }
 </script>
-
 </body>
 </html>
